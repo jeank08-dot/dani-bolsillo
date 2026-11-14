@@ -113,8 +113,9 @@ const uid=()=>'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const short=s=>({'Estudios Sociales':'Sociales','Educación Cívica':'Cívica'}[s]||s);
 let S={pkg:load('db_pkg',null),ch:load('db_changes',[]),ui:load('db_ui',{}),sync:load('db_sync',{})};
 S.ui=Object.assign({tab:'lista',g:null,day:today(),les:'all',scope:'g',q:''},S.ui);
+S.nube=load('db_nube',null);S.sent=load('db_sent2',[]);S.net={busy:false,err:'',sentAt:load('db_sentat',null)};
 let draft=null;   // lista en edición (no guardada todavía)
-const persist=()=>{save('db_changes',S.ch);save('db_ui',S.ui)};
+const persist=()=>{save('db_changes',S.ch);save('db_ui',S.ui);save('db_sent2',S.sent)};
 
 /* ---------- índices del paquete ---------- */
 function index(){
@@ -127,7 +128,7 @@ function index(){
 }
 index();
 const G=()=>S.pkg&&(S.pkg.groups.find(g=>g.key===S.ui.g)||S.pkg.groups[0]);
-function mine(g,sid,day,l){for(let i=S.ch.length-1;i>=0;i--){const c=S.ch[i];if(c.g===g.key&&c.sid===sid&&c.day===day&&c.l===l)return c}return null}
+function mine(g,sid,day,l){for(const L of [S.ch,S.sent])for(let i=L.length-1;i>=0;i--){const c=L[i];if(c.g===g.key&&c.sid===sid&&c.day===day&&c.l===l)return c}return null}
 /* estado actual: cambio propio > en revisión en DANI > registro de DANI > P si el día ya tiene lista */
 function cur(g,sid,day,l){
   const c=mine(g,sid,day,l);if(c)return {s:c.s,r:c.r,src:'yo'};
@@ -146,7 +147,7 @@ function addChange(g,sid,day,l,s,r,kind){
   const prev=(()=>{const v=S.rev.get(`${g.key}|${sid}|${day}|${l}`);if(v)return v.s;const x=g.map.get(`${sid}|${day}|${l}`);if(x)return x[0];return g.daySet.has(day)?'P':''})();
   S.ch=S.ch.filter(c=>!(c.g===g.key&&c.sid===sid&&c.day===day&&c.l===l));
   const c0=cur(g,sid,day,l);
-  if(c0&&c0.src!=='yo'&&c0.s===s&&(c0.r||'')===(r||''))return 0;   // igual a lo que ya tiene DANI
+  if(c0&&c0.s===s&&(c0.r||'')===(r||''))return 0;   // igual a lo que ya tiene DANI o ya se envió
   S.ch.push({id:uid(),g:g.key,sid,day,l,s,r:r||'',prev,kind,per:S.pkg.period,ts:stamp()});return 1;
 }
 
@@ -163,7 +164,7 @@ function render(){
   const g=G();theme(g);
   if(g)S.ui.g=g.key;
   const age=S.pkg?ago(S.pkg.gen):'';
-  let h=`<header><div class="brand"><b>DANI Bolsillo</b><span>${S.pkg?esc(periodName())+' · '+age:'sin datos todavía'}</span></div>`;
+  let h=`<header><div class="brand"><b>DANI Bolsillo</b><span>${netLine()||(S.pkg?esc(periodName())+' · '+age:'sin datos todavía')}</span></div>`;
   if(S.pkg&&S.ui.tab!=='sync')h+=`<div class="groups">${S.pkg.groups.map(x=>`<button class="pill ${x.key===S.ui.g?'on':''}" data-g="${esc(x.key)}">${esc(short(x.subject))} ${x.level}.º</button>`).join('')}</div>`;
   h+=`</header><main id="main"></main>`;
   const n=S.ch.length;
@@ -171,7 +172,7 @@ function render(){
   $('#app').innerHTML=h;
   document.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{S.ui.g=b.dataset.g;draft=null;persist();render()});
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{S.ui.tab=b.dataset.tab;persist();render();scrollTo(0,0)});
-  if(!S.pkg&&S.ui.tab!=='sync'){ $('#main').innerHTML=`<div class="empty"><b>Bienvenido a DANI Bolsillo</b>Para empezar, abrí DANI en la compu, entrá a <b style="display:inline;font-size:inherit">Celular</b> en el menú y sincronizá. Así el celular recibe tus grupos y estudiantes.<br><br><button class="big" onclick="S.ui.tab='sync';render()">Ir a Sincronizar</button></div>`;return}
+  if(!S.pkg&&S.ui.tab!=='sync'){ $('#main').innerHTML=`<div class="empty"><b>Bienvenido a DANI Bolsillo</b>Para empezar, en la compu abrí DANI → <b style="display:inline;font-size:inherit">Celular</b> → <b style="display:inline;font-size:inherit">Emparejar celular</b> y escaneá ese código con la cámara. Se hace una sola vez.<br><br><button class="big" onclick="S.ui.tab='sync';render()">Ir a Sincronizar</button></div>`;return}
   ({lista:vLista,justificar:vJust,pendientes:vPend,sync:vSync})[S.ui.tab]();
 }
 const periodName=()=>S.pkg.period===1?'I período':'II período';
@@ -199,7 +200,7 @@ function vLista(){
     const cap=v.s==='T'||v.s==='TJ'?`Tardía · ${m??'?'} min${t?' · '+esc(t):''}`:(v.s==='J'&&t?esc(t):'');
     return `<div class="st"><div class="n">${esc(name)}${cap?`<small>${cap}</small>`:''}</div><div class="seg">${['P','A','T','J','E'].map(s=>`<button data-sid="${sid}" data-s="${s}" class="${v.s===s||(s==='T'&&v.s==='TJ')?'s'+v.s:''}">${s}</button>`).join('')}</div></div>`}).join('');
   const pend=S.ch.length;
-  h+=`<div class="foot"><div><div class="note">${registered&&!draft.dirty?'Esta lista ya tiene datos · ':''}Se guarda en el celular${pend?` · <span class="badge">${pend} ${pend===1?'cambio pendiente':'cambios pendientes'}</span>`:''}</div><button class="big" id="saveList">Guardar lista</button></div></div>`;
+  h+=`<div class="foot"><div><div class="note">${registered&&!draft.dirty?'Esta lista ya tiene datos · ':''}${S.nube?'Se envía sola a DANI':'Se guarda en el celular'}${pend?` · <span class="badge">${pend} ${pend===1?'cambio pendiente':'cambios pendientes'}</span>`:''}</div><button class="big" id="saveList">Guardar lista</button></div></div>`;
   $('#main').innerHTML=h;bindDay(g);
   document.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{S.ui.les=b.dataset.l==='all'?'all':+b.dataset.l;persist();vLista()});
   document.querySelectorAll('[data-sid]').forEach(b=>b.onclick=()=>setStatus(g,+b.dataset.sid,b.dataset.s,lessons));
@@ -245,7 +246,7 @@ function saveList(g,day,lessons){
     lessons.forEach((l,i)=>{let s=v.s,r=v.r;
       if((s==='T'||s==='TJ')&&i>0){s='P';r=''}      // tardía: solo la primera lección; las demás presentes
       k+=addChange(g,sid,day,l,s,r,'lista')})}
-  persist();draft=null;toast(k?`Lista guardada en el celular · ${k} ${k===1?'cambio':'cambios'}`:'No hubo cambios: la lista ya estaba igual en DANI');render();
+  persist();draft=null;toast(k?(S.nube?`Lista guardada · ${k} ${k===1?'cambio':'cambios'} · enviando a DANI…`:`Lista guardada en el celular · ${k} ${k===1?'cambio':'cambios'}`):'No hubo cambios: la lista ya estaba igual en DANI');render();if(k)enviar();
 }
 
 /* ---------- Justificar ---------- */
@@ -253,7 +254,7 @@ function pendientesJust(scope){
   const out=new Map();
   for(const g of S.pkg.groups){if(scope==='g'&&g.key!==S.ui.g)continue;
     const keys=new Set();for(const k of g.map.keys())keys.add(k);
-    for(const c of S.ch)if(c.g===g.key)keys.add(`${c.sid}|${c.day}|${c.l}`);
+    for(const c of S.ch.concat(S.sent))if(c.g===g.key)keys.add(`${c.sid}|${c.day}|${c.l}`);
     for(const [k,c] of S.rev)if(c.g===g.key)keys.add(`${c.sid}|${c.day}|${c.l}`);
     for(const k of keys){const [sid,day,l]=k.split('|');const v=cur(g,+sid,day,+l);if(!v||!['A','T','E'].includes(v.s))continue;
       const id=`${g.key}|${sid}|${day}`;if(!out.has(id))out.set(id,{g,sid:+sid,day,les:[]});out.get(id).les.push({l:+l,s:v.s,r:v.r,src:v.src})}}
@@ -285,25 +286,29 @@ function justSheet(x){
     let k=0;for(const v of x.les){if(!sel.has(v.l))continue;let rr=r;
       if(v.s==='T'){const mm=minOf(v.r);rr=[r,mm!=null?`min: ${mm}`:''].filter(Boolean).join('; ')}
       k+=addChange(x.g,x.sid,x.day,v.l,to(v.s),rr,'justificacion')}
-    persist();toast(`Justificación guardada en el celular`);setTimeout(()=>{render()},0);
+    persist();toast(S.nube?'Justificación guardada · enviando a DANI…':'Justificación guardada en el celular');setTimeout(()=>{render()},0);enviar();
   },extra);
   const m=$('#modal');m.querySelector('.sheet .big.blue').textContent='Guardar justificación';
   m.querySelectorAll('#les [data-l]').forEach(b=>b.onclick=()=>{const l=+b.dataset.l;sel.has(l)?sel.delete(l):sel.add(l);b.classList.toggle('on',sel.has(l))});
 }
 
 /* ---------- Pendientes ---------- */
+function cardsOf(list){
+  const byG=new Map();for(const c of list){if(!byG.has(c.g))byG.set(c.g,[]);byG.get(c.g).push(c)}let h='';
+  for(const [gk,l] of byG){const g=S.pkg&&S.pkg.groups.find(x=>x.key===gk);h+=`<div class="sec">${esc(g?short(g.subject)+' '+g.level+'.º':gk)}</div>`;
+    l.sort((a,b)=>b.day.localeCompare(a.day)||a.l-b.l);
+    h+=l.map(c=>`<div class="card"><div class="d"><b>${esc(g?g.names.get(c.sid):c.sid)}</b><small>${fmtShort(c.day)} · L${c.l}${c.prev?` · antes ${c.prev}`:''}${reasonText(c.r)?' · '+esc(reasonText(c.r)):''}${minOf(c.r)!=null?' · '+minOf(c.r)+' min':''}</small></div><span class="chip c${c.s}">${c.s}</span>${list===S.ch?`<button class="x" data-del="${c.id}" title="Quitar">✕</button>`:''}</div>`).join('')}
+  return h;
+}
 function vPend(){
-  const byG=new Map();for(const c of S.ch){if(!byG.has(c.g))byG.set(c.g,[]);byG.get(c.g).push(c)}
-  let h='';
-  if(!S.ch.length)h+=`<div class="empty"><b>Todo enviado</b>No hay cambios esperando para pasar a DANI.</div>`;
-  else{h+=`<div class="box"><p>Estos cambios están guardados solo en el celular. Pasan a DANI cuando sincronizás.</p><button class="big" style="margin-top:12px" onclick="S.ui.tab='sync';render()">Sincronizar ahora</button></div>`;
-    for(const [gk,list] of byG){const g=S.pkg.groups.find(x=>x.key===gk);h+=`<div class="sec">${esc(g?short(g.subject)+' '+g.level+'.º':gk)}</div>`;
-      list.sort((a,b)=>b.day.localeCompare(a.day)||a.l-b.l);
-      h+=list.map(c=>`<div class="card"><div class="d"><b>${esc(g?g.names.get(c.sid):c.sid)}</b><small>${fmtShort(c.day)} · L${c.l}${c.prev?` · antes ${c.prev}`:''}${reasonText(c.r)?' · '+esc(reasonText(c.r)):''}${minOf(c.r)!=null?' · '+minOf(c.r)+' min':''}</small></div><span class="chip c${c.s}">${c.s}</span><button class="x" data-del="${c.id}" title="Quitar">✕</button></div>`).join('')}}
-  const rev=S.pkg&&S.pkg.rev||[];
-  if(rev.length)h+=`<div class="sec">En revisión en DANI</div><div class="box"><p>${rev.length} ${rev.length===1?'cambio ya llegó':'cambios ya llegaron'} a DANI y ${rev.length===1?'espera':'esperan'} que lo apruebes en la compu (menú <b>Celular</b>).</p></div>`;
+  let h='';const rev=S.pkg&&S.pkg.rev||[];
+  if(!S.ch.length&&!S.sent.length&&!rev.length)h+=`<div class="empty"><b>Todo al día</b>No hay cambios esperando.</div>`;
+  if(S.ch.length){h+=`<div class="box"><h3>Por enviar · ${S.ch.length}</h3><p>${S.nube?(S.net.err?esc(S.net.err)+' Se envían solos apenas haya señal.':'Enviando…'):'Están solo en el celular. Pasan a DANI cuando sincronizás.'}</p><button class="big" style="margin-top:12px" id="sendNow">${S.nube?'Enviar ahora':'Sincronizar ahora'}</button></div>`+cardsOf(S.ch)}
+  const espera=S.sent.length+rev.length;
+  if(espera)h+=`<div class="sec">Ya enviados</div><div class="box"><p><b>${espera} ${espera===1?'cambio espera':'cambios esperan'}</b> que los aprobés en DANI (en Inicio sale el aviso «Llegaron cambios del celular»).</p></div>`;
   $('#main').innerHTML=h;
   document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{S.ch=S.ch.filter(c=>c.id!==b.dataset.del);persist();render()});
+  if($('#sendNow'))$('#sendNow').onclick=()=>{if(S.nube){enviar(true).then(bajar)}else{S.ui.tab='sync';render()}};
 }
 
 /* ---------- Sincronizar ---------- */
@@ -311,18 +316,24 @@ async function pack(obj){const s=new Blob([JSON.stringify(obj)]).stream().pipeTh
 async function unpack(str){str=str.replace(/-/g,'+').replace(/_/g,'/');while(str.length%4)str+='=';const bin=atob(str);const buf=Uint8Array.from(bin,c=>c.charCodeAt(0));const s=new Blob([buf]).stream().pipeThrough(new DecompressionStream('deflate-raw'));return JSON.parse(await new Response(s).text())}
 function vSync(){
   const last=S.sync.addr||'';const n=S.ch.length;
-  let h=`<div class="box"><h3>Sincronizar con DANI</h3><p>En la compu abrí DANI → <b>Celular</b>. Celular y compu tienen que estar en el mismo Wi-Fi. No se usa internet ni la nube.</p>
-   ${n?`<p style="margin-top:8px"><span class="badge">${n} ${n===1?'cambio':'cambios'} por enviar</span></p>`:''}
-   ${'BarcodeDetector' in window?`<button class="big" id="scan" style="margin-top:14px">Escanear código de DANI</button>`:''}</div>
-   <div class="box"><h3>Escribir la dirección</h3><p>Si no podés escanear, copiá lo que muestra DANI.</p>
+  let h='';
+  if(S.nube)h+=`<div class="box"><h3>✓ Emparejado con DANI</h3><p>Los cambios se envían solos, cifrados, apenas hay señal. DANI los recoge y te avisa en Inicio.</p>
+     <p style="margin-top:8px">${S.net.sentAt?'Último envío: '+esc(hora(S.net.sentAt)):'Sin envíos todavía'}${S.pkg?' · Datos de DANI: '+esc(ago(S.pkg.gen)):''}</p>
+     ${S.net.err?`<div class="warn">${esc(S.net.err)}</div>`:''}
+     <button class="big" id="now" style="margin-top:14px">${n?`Enviar ${n} y actualizar`:'Actualizar datos de DANI'}</button></div>`;
+  else h+=`<div class="box"><h3>Emparejar con DANI (una sola vez)</h3><p>En la compu: DANI → <b>Celular</b> → <b>Emparejar celular</b>. Escaneá ese código con la <b>cámara</b> del celular y listo: desde ahí todo se envía solo.</p></div>`;
+  h+=`<details class="box"><summary style="font-weight:800;color:var(--ink)">Otras formas (sin internet)</summary>
+   <p style="margin-top:10px">Wi-Fi: en DANI → Celular → «Código Wi-Fi». Celular y compu en la misma red.</p>
+   ${'BarcodeDetector' in window?`<button class="big ghost" id="scan" style="margin-top:10px">Escanear código Wi-Fi</button>`:''}
    <input class="field" id="addr" placeholder="Dirección, p. ej. 192.168.1.20:8765" value="${esc(last)}" inputmode="url" autocapitalize="off">
    <input class="field" id="tok" placeholder="Código de 6 letras" autocapitalize="characters" maxlength="6">
-   <button class="big ghost" id="go" style="margin-top:12px">Sincronizar</button></div>
-   <div class="box"><h3>Sin Wi-Fi: por archivo</h3><p>Mandate los cambios como archivo (WhatsApp, correo o cable) y en DANI usá <b>Recibir archivo</b>.</p>
+   <button class="big ghost" id="go" style="margin-top:10px">Sincronizar por Wi-Fi</button>
+   <p style="margin-top:14px">Por archivo: mandate los cambios (WhatsApp, correo, cable) y en DANI usá «Recibir archivo».</p>
    <div class="row2"><button class="big ghost" id="expf" ${n?'':'disabled'}>Enviar cambios</button><button class="big ghost" id="impf">Cargar datos</button></div>
-   <input type="file" id="file" accept=".json,application/json" hidden></div>
-   ${S.pkg?`<div class="info" style="margin:4px 18px 20px">Datos de ${esc(S.pkg.centro||'DANI')} · ${S.pkg.year} · ${periodName()} · ${S.pkg.groups.length} grupos · ${ago(S.pkg.gen)}</div>`:''}`;
+   <input type="file" id="file" accept=".json,application/json" hidden></details>
+   ${S.pkg?`<div class="info" style="margin:4px 18px 20px">${esc(S.pkg.centro||'DANI')} · ${S.pkg.year} · ${periodName()} · ${S.pkg.groups.length} grupos</div>`:''}`;
   $('#main').innerHTML=h;
+  if($('#now'))$('#now').onclick=async()=>{$('#now').disabled=true;await enviar(true);await bajar(true);render()};
   if($('#scan'))$('#scan').onclick=scan;
   $('#go').onclick=()=>{const a=$('#addr').value.trim(),t=$('#tok').value.trim().toUpperCase();if(!a||t.length<6){toast('Escribí la dirección y el código que muestra DANI');return}go(a,t)};
   $('#expf').onclick=exportFile;$('#impf').onclick=()=>$('#file').click();$('#file').onchange=importFile;
@@ -348,6 +359,8 @@ async function arrive(){
   const h=location.hash;if(!h||h.length<3)return;
   history.replaceState(null,'',location.pathname+location.search);
   const p=new URLSearchParams(h.slice(1));
+  if(p.get('pair')){try{const d=JSON.parse(new TextDecoder().decode(unb64(p.get('pair'))));if(!d.r||!d.t||!d.k)throw 0;S.nube=d;save('db_nube',d);S.net.err='';
+      toast('✓ Emparejado con DANI. Instalá la app desde el menú del navegador.');await bajar(true);render()}catch(e){toast('Ese código de emparejar no es válido')}return}
   if(p.get('err')){toast(p.get('err'));return}
   if(!p.get('p'))return;
   try{const data=await unpack(p.get('p'));applyPackage(data,'sync')}catch(e){toast('No se pudieron leer los datos de DANI')}
@@ -355,11 +368,11 @@ async function arrive(){
 function applyPackage(data,how){
   if(!data||!data.pkg||!Array.isArray(data.pkg.groups)){toast('Ese archivo no es un paquete de DANI');return}
   const ack=new Set(data.ack||[]);const before=S.ch.length;
-  S.ch=S.ch.filter(c=>!ack.has(c.id));const sent=before-S.ch.length;
+  S.ch=S.ch.filter(c=>!ack.has(c.id));const sent=before-S.ch.length;S.sent=S.sent.filter(c=>!ack.has(c.id));
   S.pkg=data.pkg;save('db_pkg',S.pkg);persist();index();draft=null;
   if(!S.pkg.groups.find(g=>g.key===S.ui.g))S.ui.g=S.pkg.groups[0]&&S.pkg.groups[0].key;
   S.ui.tab=sent||how==='sync'?'lista':S.ui.tab;persist();render();
-  toast(sent?`Listo: ${sent} ${sent===1?'cambio llegó':'cambios llegaron'} a DANI`:'Datos de DANI actualizados');
+  if(how!=='nube')toast(sent?`Listo: ${sent} ${sent===1?'cambio llegó':'cambios llegaron'} a DANI`:'Datos de DANI actualizados');
 }
 async function exportFile(){
   const now=new Date();const name=`dani_bolsillo_cambios_${iso(now).replace(/-/g,'')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}.json`;
@@ -374,8 +387,38 @@ async function importFile(e){
   try{const data=JSON.parse(await f.text());if(data.tipo!=='dani-bolsillo-paquete')throw 0;applyPackage(data,'file')}catch(err){toast('Ese archivo no es un paquete de DANI')}
   e.target.value='';
 }
+/* ---------- Buzón en la nube (cifrado, se envía solo) ---------- */
+const b64=u=>{let bin='';for(let i=0;i<u.length;i+=8192)bin+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')};
+const unb64=s=>{s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';return Uint8Array.from(atob(s),c=>c.charCodeAt(0))};
+const hora=t=>{const d=new Date(t);return `${d.getDate()} ${MESES[d.getMonth()]} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`};
+let _key=null;async function llave(){if(!_key)_key=await crypto.subtle.importKey('raw',unb64(S.nube.k),'AES-GCM',false,['encrypt','decrypt']);return _key}
+async function cifra(obj){const iv=crypto.getRandomValues(new Uint8Array(12));const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},await llave(),new TextEncoder().encode(JSON.stringify(obj))));return {v:1,iv:b64(iv),ct:b64(ct)}}
+async function descifra(o){const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(o.iv)},await llave(),unb64(o.ct));return JSON.parse(new TextDecoder().decode(pt))}
+async function gh(method,path,body,raw){
+  const r=await fetch(`https://api.github.com/repos/${S.nube.r}/contents/${path}`,{method,cache:'no-store',headers:{'Authorization':'Bearer '+S.nube.t,'Accept':raw?'application/vnd.github.raw+json':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},body:body?JSON.stringify(body):undefined});
+  if(!r.ok){const e=new Error('http '+r.status);e.status=r.status;throw e}return raw?r.text():r.json()}
+function errTxt(e){return e&&e.status&&[401,403,404].includes(e.status)?'DANI cambió la llave del buzón: volvé a emparejar.':'Sin señal: se enviará solo después.'}
+async function enviar(manual){
+  if(!S.nube||S.net.busy||!S.ch.length)return;if(!navigator.onLine){S.net.err='Sin señal: se enviará solo después.';if(manual)toast(S.net.err);return}
+  S.net.busy=true;const lote=S.ch.slice();
+  try{const sobre=await cifra({v:1,ch:lote});const nombre=`in/${Date.now()}-${Math.random().toString(36).slice(2,8)}.json`;
+    await gh('PUT',nombre,{message:'Cambios de DANI Bolsillo',content:btoa(JSON.stringify(sobre))});
+    const ids=new Set(lote.map(c=>c.id));S.ch=S.ch.filter(c=>!ids.has(c.id));S.sent=S.sent.concat(lote);S.net.err='';S.net.sentAt=new Date().toISOString();save('db_sentat',S.net.sentAt);persist();
+    toast(`✓ Enviado a DANI (${lote.length})`);
+  }catch(e){S.net.err=errTxt(e);if(manual)toast(S.net.err)}
+  finally{S.net.busy=false;if(!$('#modal').classList.contains('on'))render()}
+}
+async function bajar(manual){
+  if(!S.nube||!navigator.onLine)return;
+  try{const txt=await gh('GET','pkg.json',null,true);const data=await descifra(JSON.parse(txt));
+    if(!S.pkg||data.pkg.gen!==S.pkg.gen||manual){if(draft&&draft.dirty){S._pend=data;return}applyPackage(data,'nube')}
+  }catch(e){if(e.status===404){if(manual)toast('DANI todavía no ha subido datos: abrí DANI en la compu.')}else if(manual)toast(errTxt(e))}
+}
+function netLine(){if(!S.nube)return '';if(S.ch.length)return `${S.ch.length} por enviar${S.net.err?' (sin señal)':'…'}`;if(S.net.sentAt)return `✓ enviado ${hora(S.net.sentAt)}`;return S.pkg?'✓ emparejado con DANI':''}
+function alDia(){if(document.visibilityState==='visible'){enviar().then(()=>bajar())}}
+document.addEventListener('visibilitychange',alDia);addEventListener('online',alDia);setInterval(alDia,90000);
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
-render();arrive();
+render();arrive().then(alDia);
 </script>
 </body>
 </html>
