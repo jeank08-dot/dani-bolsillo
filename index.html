@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#126B52">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icono-192.png">
+<link rel="apple-touch-icon" href="icono-192.png">
+<title>DANI Bolsillo</title>
+<style>
+:root{--bg:#DCF6EB;--bg2:#C7EFDF;--ink:#126B52;--edge:#83D6B5;--text:#25313A;--muted:#5B6B75;--line:#E3EAE8;--page:#F4F8F7}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:var(--page);color:var(--text);font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;font-size:15px}
+button{font:inherit;border:0;background:none;color:inherit;cursor:pointer}
+input,textarea{font:inherit;color:var(--text)}
+#app{max-width:560px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;background:var(--page)}
+header{background:var(--bg);border-bottom:2px solid var(--edge);padding:calc(10px + env(safe-area-inset-top)) 16px 12px;position:sticky;top:0;z-index:5}
+.brand{display:flex;align-items:baseline;justify-content:space-between}
+.brand b{font-size:21px;color:var(--ink);font-weight:800}
+.brand span{font-size:12.5px;color:var(--muted)}
+.groups{display:flex;gap:6px;overflow-x:auto;margin-top:10px;padding-bottom:2px;scrollbar-width:none}
+.groups::-webkit-scrollbar{display:none}
+.pill{border-radius:18px;padding:6px 14px;font-size:13.5px;font-weight:700;border:1.5px solid var(--edge);background:#fff;color:var(--ink);white-space:nowrap}
+.pill.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.pill:disabled{opacity:.45}
+main{flex:1;padding-bottom:calc(150px + env(safe-area-inset-bottom))}
+nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:center;padding:6px 0 calc(6px + env(safe-area-inset-bottom));z-index:6}
+nav div{display:flex;max-width:560px;width:100%}
+nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11.5px;font-weight:700;color:#7C8A93;padding:4px 0;position:relative}
+nav button svg{width:24px;height:24px}
+nav button.on{color:var(--ink)}
+nav .count{position:absolute;top:0;left:calc(50% + 6px);background:#D9A021;color:#fff;border-radius:10px;font-size:10.5px;padding:1px 6px}
+.bar{display:flex;align-items:center;gap:8px;padding:12px 14px 4px}
+.daybtn{width:38px;height:38px;border-radius:19px;background:#fff;border:1.5px solid var(--edge);color:var(--ink);font-size:18px;font-weight:800}
+.daytxt{flex:1;text-align:center;position:relative}
+.daytxt b{display:block;font-size:16px}
+.daytxt small{color:var(--muted);font-size:12.5px}
+.daytxt input{position:absolute;inset:0;opacity:0}
+.lessons{display:flex;gap:6px;padding:8px 14px 10px;flex-wrap:wrap}
+.st{display:flex;align-items:center;padding:9px 14px;border-bottom:1px solid var(--line);background:#fff;gap:8px}
+.st .n{flex:1;min-width:0;font-size:14.5px;font-weight:600;line-height:1.25}
+.st .n small{display:block;font-weight:500;font-size:12px;color:var(--muted)}
+.seg{display:flex;gap:4px;flex-shrink:0}
+.seg button{width:33px;height:33px;border-radius:17px;font-size:12.5px;font-weight:800;background:#F0F3F4;color:#7C8A93}
+.sP{background:#17845C!important;color:#fff!important}.sA{background:#B42D4A!important;color:#fff!important}
+.sT{background:#D9A021!important;color:#fff!important}.sJ{background:#2F6FB5!important;color:#fff!important}
+.sE{background:#C2410C!important;color:#fff!important}.sTJ{background:#6B4BB0!important;color:#fff!important}
+.foot{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));z-index:4;display:flex;justify-content:center;pointer-events:none}
+.foot div{max-width:560px;width:100%;padding:10px 14px;background:linear-gradient(transparent,var(--page) 30%);pointer-events:auto}
+.big{display:block;width:100%;border-radius:22px;padding:13px;text-align:center;font-weight:800;font-size:16px;background:var(--ink);color:#fff}
+.big.blue{background:#2F6FB5}.big.ghost{background:#fff;color:var(--ink);border:1.5px solid var(--edge)}
+.big:disabled{opacity:.5}
+.note{font-size:12.5px;color:var(--muted);text-align:center;margin-bottom:7px}
+.badge{background:#FFF2CF;color:#9B6B10;border-radius:12px;padding:2px 9px;font-size:12px;font-weight:700}
+.empty{margin:30px 22px;text-align:center;color:var(--muted);line-height:1.5}
+.empty b{display:block;color:var(--text);font-size:17px;margin-bottom:6px}
+.search{display:block;margin:12px 14px 6px;width:calc(100% - 28px);background:#fff;border:1.5px solid var(--edge);border-radius:20px;padding:10px 16px;font-size:15px;outline:none}
+.card{margin:7px 14px;background:#fff;border-radius:16px;padding:11px 14px;border:1px solid var(--line);display:flex;align-items:center;gap:10px;text-align:left;width:calc(100% - 28px)}
+.card .d{flex:1;min-width:0;font-size:14.5px}
+.card .d small{display:block;color:var(--muted);font-size:12.5px;margin-top:1px}
+.chip{border-radius:14px;padding:4px 10px;font-size:12px;font-weight:800;white-space:nowrap}
+.cA{background:#FFE3E7;color:#B42D4A}.cJ{background:#E1EFFF;color:#2F6FB5}.cT{background:#FFF2CF;color:#9B6B10}
+.cE{background:#FCE6D9;color:#C2410C}.cTJ{background:#EEE2FF;color:#6B4BB0}.cP{background:#E0F6E8;color:#17845C}
+.sec{font-size:12.5px;font-weight:800;color:var(--muted);margin:16px 16px 2px;text-transform:uppercase;letter-spacing:.4px}
+.x{width:30px;height:30px;border-radius:15px;background:#F3F6F5;color:#7C8A93;font-weight:800}
+.box{margin:12px 14px;background:#fff;border-radius:18px;border:1px solid var(--line);padding:16px}
+.box h3{font-size:16px;margin-bottom:4px}.box p{font-size:13.5px;color:var(--muted);line-height:1.45}
+.field{display:block;width:100%;border:1.5px solid #D1D9DF;border-radius:14px;padding:10px 12px;font-size:15px;margin-top:8px;outline:none;background:#fff}
+.field:focus{border-color:var(--ink)}
+#modal{position:fixed;inset:0;z-index:20;display:none}
+#modal.on{display:block}
+.dim{position:absolute;inset:0;background:rgba(20,30,35,.38)}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;background:#fff;border-radius:24px 24px 0 0;padding:12px 18px calc(20px + env(safe-area-inset-bottom));max-height:88%;overflow:auto}
+.grab{width:46px;height:5px;background:#D1D9DF;border-radius:3px;margin:0 auto 12px}
+.sheet h3{font-size:18px}.sheet .sub{font-size:13px;color:var(--muted);margin:3px 0 4px}
+.lbl{font-size:12.5px;font-weight:800;color:#39566A;margin:14px 0 7px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.blue .pill{border-color:#B9D3EC;color:#2F6FB5}.blue .pill.on{background:#2F6FB5;border-color:#2F6FB5;color:#fff}
+.row2{display:flex;gap:8px;margin-top:16px}.row2 .big{flex:1}
+.warn{background:#FFF7E3;border:1px solid #F2D58A;border-radius:12px;padding:9px 12px;font-size:13px;color:#7A5A0E;margin-top:10px}
+#toast{position:fixed;left:50%;top:calc(96px + env(safe-area-inset-top));transform:translateX(-50%);background:#25313A;color:#fff;padding:10px 18px;border-radius:20px;font-size:14px;z-index:30;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%;text-align:center}
+#toast.on{opacity:1}
+video{width:100%;border-radius:16px;background:#000;margin-top:10px;aspect-ratio:1;object-fit:cover}
+.info{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.45}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal"></div>
+<div id="toast"></div>
+<script>
+'use strict';
+/* DANI Bolsillo: pasar lista y justificar desde el celular, sin internet.
+   Los datos viven solo en este celular (localStorage) y pasan a DANI al sincronizar. */
+const LV={7:['#EAF0F5','#D9E4EC','#3E5C76','#9FB5C7'],8:['#DDF3FC','#C8EAF8','#07558A','#8DD4F1'],9:['#EEDFFF','#E4CEFA','#6230A0','#D0AEF8'],
+10:['#FFE6ED','#FFD5E2','#9D2751','#F6B0C7'],11:['#DCF6EB','#C7EFDF','#126B52','#83D6B5'],12:['#E8F5F4','#D7EFEC','#186D69','#BFE5DF']};
+const ST={P:'Presente',A:'Ausente',T:'Tardía',J:'Justificada',TJ:'Tardía justificada',E:'Escape',NC:'Sin clase'};
+const MOTIVOS_BASE=['Dictamen médico','Cita','Asunto familiar','Actividad del colegio','Otro'];
+const DIAS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+const MESES=['ene','feb','mar','abr','may','jun','jul','ago','sept','oct','nov','dic'];
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){toast('No se pudo guardar en el celular');return false}}
+const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const parse=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const today=()=>iso(new Date());
+const fmt=s=>{const d=parse(s);return `${DIAS[d.getDay()]} ${d.getDate()} ${MESES[d.getMonth()]}`};
+const fmtShort=s=>{const d=parse(s);return `${d.getDate()} ${MESES[d.getMonth()]}`};
+const uid=()=>'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const short=s=>({'Estudios Sociales':'Sociales','Educación Cívica':'Cívica'}[s]||s);
+let S={pkg:load('db_pkg',null),ch:load('db_changes',[]),ui:load('db_ui',{}),sync:load('db_sync',{})};
+S.ui=Object.assign({tab:'lista',g:null,day:today(),les:'all',scope:'g',q:''},S.ui);
+let draft=null;   // lista en edición (no guardada todavía)
+const persist=()=>{save('db_changes',S.ch);save('db_ui',S.ui)};
+
+/* ---------- índices del paquete ---------- */
+function index(){
+  if(!S.pkg)return;
+  for(const g of S.pkg.groups){
+    g.map=new Map();g.daySet=new Set(g.days||[]);g.names=new Map(g.students.map(s=>[s[0],s[1]]));
+    for(const [sid,day,l,s,r] of g.rec)g.map.set(`${sid}|${day}|${l}`,[s,r||'']);
+  }
+  S.rev=new Map();for(const c of S.pkg.rev||[])S.rev.set(`${c.g}|${c.sid}|${c.day}|${c.l}`,c);
+}
+index();
+const G=()=>S.pkg&&(S.pkg.groups.find(g=>g.key===S.ui.g)||S.pkg.groups[0]);
+function mine(g,sid,day,l){for(let i=S.ch.length-1;i>=0;i--){const c=S.ch[i];if(c.g===g.key&&c.sid===sid&&c.day===day&&c.l===l)return c}return null}
+/* estado actual: cambio propio > en revisión en DANI > registro de DANI > P si el día ya tiene lista */
+function cur(g,sid,day,l){
+  const c=mine(g,sid,day,l);if(c)return {s:c.s,r:c.r,src:'yo'};
+  const v=S.rev.get(`${g.key}|${sid}|${day}|${l}`);if(v)return {s:v.s,r:v.r,src:'rev'};
+  const x=g.map.get(`${sid}|${day}|${l}`);if(x)return {s:x[0],r:x[1],src:'dani'};
+  if(g.daySet.has(day))return {s:'P',r:'',src:'dani'};
+  return null;
+}
+const pyWeekday=day=>(parse(day).getDay()+6)%7;
+function nLessons(g,day){if(g.over&&g.over[day]!=null)return g.over[day];return (g.sched||{})[pyWeekday(day)]||0}
+const ncOf=(g,day)=>(g.nc&&g.nc[day])||[];
+const minOf=r=>{const m=/(?:^|\s)min\s*:\s*(\d+)/i.exec(r||'');return m?+m[1]:null};
+const reasonText=r=>(r||'').replace(/(?:^|\s|;)\s*min\s*:\s*\d+/ig,'').replace(/^[\s;,]+|[\s;,]+$/g,'');
+function stamp(){return new Date().toISOString().slice(0,19)}
+function addChange(g,sid,day,l,s,r,kind){
+  const prev=(()=>{const v=S.rev.get(`${g.key}|${sid}|${day}|${l}`);if(v)return v.s;const x=g.map.get(`${sid}|${day}|${l}`);if(x)return x[0];return g.daySet.has(day)?'P':''})();
+  S.ch=S.ch.filter(c=>!(c.g===g.key&&c.sid===sid&&c.day===day&&c.l===l));
+  const c0=cur(g,sid,day,l);
+  if(c0&&c0.src!=='yo'&&c0.s===s&&(c0.r||'')===(r||''))return 0;   // igual a lo que ya tiene DANI
+  S.ch.push({id:uid(),g:g.key,sid,day,l,s,r:r||'',prev,kind,per:S.pkg.period,ts:stamp()});return 1;
+}
+
+/* ---------- interfaz ---------- */
+function theme(g){const p=LV[g?g.level:11]||LV[11];const r=document.documentElement.style;
+  r.setProperty('--bg',p[0]);r.setProperty('--bg2',p[1]);r.setProperty('--ink',p[2]);r.setProperty('--edge',p[3]);
+  document.querySelector('meta[name=theme-color]').content=p[2]}
+const ICON={
+ lista:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',
+ justificar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>',
+ pendientes:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+ sync:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 14-5.3L20 9M20 4v5h-5M20 12a8 8 0 0 1-14 5.3L4 15M4 20v-5h5"/></svg>'};
+function render(){
+  const g=G();theme(g);
+  if(g)S.ui.g=g.key;
+  const age=S.pkg?ago(S.pkg.gen):'';
+  let h=`<header><div class="brand"><b>DANI Bolsillo</b><span>${S.pkg?esc(periodName())+' · '+age:'sin datos todavía'}</span></div>`;
+  if(S.pkg&&S.ui.tab!=='sync')h+=`<div class="groups">${S.pkg.groups.map(x=>`<button class="pill ${x.key===S.ui.g?'on':''}" data-g="${esc(x.key)}">${esc(short(x.subject))} ${x.level}.º</button>`).join('')}</div>`;
+  h+=`</header><main id="main"></main>`;
+  const n=S.ch.length;
+  h+=`<nav><div>${[['lista','Lista'],['justificar','Justificar'],['pendientes','Pendientes'],['sync','Sincronizar']].map(([k,t])=>`<button data-tab="${k}" class="${S.ui.tab===k?'on':''}">${ICON[k]}${t}${k==='pendientes'&&n?`<span class="count">${n}</span>`:''}</button>`).join('')}</div></nav>`;
+  $('#app').innerHTML=h;
+  document.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{S.ui.g=b.dataset.g;draft=null;persist();render()});
+  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{S.ui.tab=b.dataset.tab;persist();render();scrollTo(0,0)});
+  if(!S.pkg&&S.ui.tab!=='sync'){ $('#main').innerHTML=`<div class="empty"><b>Bienvenido a DANI Bolsillo</b>Para empezar, abrí DANI en la compu, entrá a <b style="display:inline;font-size:inherit">Celular</b> en el menú y sincronizá. Así el celular recibe tus grupos y estudiantes.<br><br><button class="big" onclick="S.ui.tab='sync';render()">Ir a Sincronizar</button></div>`;return}
+  ({lista:vLista,justificar:vJust,pendientes:vPend,sync:vSync})[S.ui.tab]();
+}
+const periodName=()=>S.pkg.period===1?'I período':'II período';
+function ago(ts){if(!ts)return '';const m=Math.round((Date.now()-new Date(ts).getTime())/60000);if(m<2)return 'recién actualizado';if(m<60)return `actualizado hace ${m} min`;const h=Math.round(m/60);if(h<36)return `actualizado hace ${h} h`;return `actualizado hace ${Math.round(h/24)} días`}
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),2600)}
+function sheet(html,mount){const m=$('#modal');m.innerHTML=`<div class="dim"></div><div class="sheet"><div class="grab"></div>${html}</div>`;m.classList.add('on');m.querySelector('.dim').onclick=closeSheet;mount&&mount(m)}
+function closeSheet(){const m=$('#modal');m.classList.remove('on');m.innerHTML='';if(window._stream){window._stream.getTracks().forEach(t=>t.stop());window._stream=null}}
+
+/* ---------- Lista ---------- */
+function classDay(g,day,dir){let d=parse(day);for(let i=0;i<120;i++){d.setDate(d.getDate()+dir);const s=iso(d);if(nLessons(g,s)>0)return s}return day}
+function vLista(){
+  const g=G(),day=S.ui.day,n=nLessons(g,day),nc=ncOf(g,day);
+  let h=`<div class="bar"><button class="daybtn" id="prev">‹</button><div class="daytxt"><b>${fmt(day)}</b><small>${n?`${n} ${n===1?'lección':'lecciones'}${nc.length?` · ${nc.length} sin clase`:''}`:'sin clase según el horario'}${day===today()?' · hoy':''}</small><input type="date" id="pick" value="${day}"></div><button class="daybtn" id="next">›</button></div>`;
+  if(!n){$('#main').innerHTML=h+`<div class="empty">Según el horario de DANI, ${esc(short(g.subject))} ${g.level}.º no tiene clase este día.<br>Usá las flechas para ir a un día con clase.</div>`;bindDay(g);return}
+  const avail=[...Array(n)].map((_,i)=>i+1).filter(l=>!nc.includes(l));
+  if(S.ui.les!=='all'&&!avail.includes(+S.ui.les))S.ui.les='all';
+  h+=`<div class="lessons">${avail.map(l=>`<button class="pill ${+S.ui.les===l||avail.length===1?'on':''}" data-l="${l}">Lección ${l}</button>`).join('')}${avail.length>1?`<button class="pill ${S.ui.les==='all'?'on':''}" data-l="all">Todas</button>`:''}</div>`;
+  if(!avail.length){$('#main').innerHTML=h+`<div class="empty">Todas las lecciones de este día están marcadas como sin clase en DANI.</div>`;bindDay(g);return}
+  const lessons=S.ui.les==='all'?avail:[+S.ui.les];
+  const key=`${g.key}|${day}|${S.ui.les}`;
+  if(!draft||draft.key!==key){draft={key,st:{},dirty:false};
+    for(const [sid] of g.students){const c=cur(g,sid,day,lessons[0]);draft.st[sid]=c?{s:c.s,r:c.r}:{s:'P',r:''}}}
+  const registered=lessons.some(l=>g.students.some(([sid])=>{const c=cur(g,sid,day,l);return c&&c.src!=='dani'||g.daySet.has(day)}));
+  h+=g.students.map(([sid,name])=>{const v=draft.st[sid];const m=minOf(v.r),t=reasonText(v.r);
+    const cap=v.s==='T'||v.s==='TJ'?`Tardía · ${m??'?'} min${t?' · '+esc(t):''}`:(v.s==='J'&&t?esc(t):'');
+    return `<div class="st"><div class="n">${esc(name)}${cap?`<small>${cap}</small>`:''}</div><div class="seg">${['P','A','T','J','E'].map(s=>`<button data-sid="${sid}" data-s="${s}" class="${v.s===s||(s==='T'&&v.s==='TJ')?'s'+v.s:''}">${s}</button>`).join('')}</div></div>`}).join('');
+  const pend=S.ch.length;
+  h+=`<div class="foot"><div><div class="note">${registered&&!draft.dirty?'Esta lista ya tiene datos · ':''}Se guarda en el celular${pend?` · <span class="badge">${pend} ${pend===1?'cambio pendiente':'cambios pendientes'}</span>`:''}</div><button class="big" id="saveList">Guardar lista</button></div></div>`;
+  $('#main').innerHTML=h;bindDay(g);
+  document.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{S.ui.les=b.dataset.l==='all'?'all':+b.dataset.l;persist();vLista()});
+  document.querySelectorAll('[data-sid]').forEach(b=>b.onclick=()=>setStatus(g,+b.dataset.sid,b.dataset.s,lessons));
+  $('#saveList').onclick=()=>saveList(g,day,lessons);
+}
+function bindDay(g){
+  $('#prev').onclick=()=>{S.ui.day=classDay(g,S.ui.day,-1);draft=null;persist();vLista()};
+  $('#next').onclick=()=>{S.ui.day=classDay(g,S.ui.day,1);draft=null;persist();vLista()};
+  $('#pick').onchange=e=>{if(e.target.value){S.ui.day=e.target.value;draft=null;persist();vLista()}};
+}
+function setStatus(g,sid,s,lessons){
+  const name=g.names.get(sid);
+  if(s==='T'){
+    const old=minOf(draft.st[sid].r);
+    sheet(`<h3>${esc(name)}</h3><div class="sub">Tardía${lessons.length>1?' · se marca en la lección '+lessons[0]+'; las demás quedan presentes':''}</div>
+    <div class="lbl">Minutos de tardanza (0 a 180)</div><input class="field" id="mins" type="number" inputmode="numeric" min="0" max="180" value="${old??''}" placeholder="Minutos">
+    <div id="msg"></div><div class="row2"><button class="big ghost" id="cancel">Cancelar</button><button class="big" id="ok">Marcar tardía</button></div>`,m=>{
+      const f=m.querySelector('#mins');setTimeout(()=>f.focus(),60);m.querySelector('#cancel').onclick=closeSheet;
+      m.querySelector('#ok').onclick=()=>{const raw=f.value.trim();
+        if(!/^\d+$/.test(raw)||+raw>180){m.querySelector('#msg').innerHTML='<div class="warn">Ingresá los minutos de tardanza (0 a 180).</div>';return}
+        if(+raw===10){m.querySelector('#msg').innerHTML='<div class="warn">El criterio para exactamente 10 minutos está pendiente de definir.</div>';return}
+        draft.st[sid]={s:'T',r:`min: ${+raw}`};draft.dirty=true;closeSheet();vLista()}});
+    return;
+  }
+  if(s==='J'){reasonSheet(name,'Justificada',reasonText(draft.st[sid].r),r=>{draft.st[sid]={s:'J',r};draft.dirty=true;vLista()});return}
+  draft.st[sid]={s,r:''};draft.dirty=true;vLista();
+}
+function motivos(){return (S.pkg&&S.pkg.motivos&&S.pkg.motivos.length?S.pkg.motivos:MOTIVOS_BASE)}
+function reasonSheet(title,sub,initial,done,extra){
+  const ms=motivos();let pick=ms.find(x=>initial===x||initial.startsWith(x+';'))||'';let note=pick?initial.slice(pick.length).replace(/^;\s*/,''):initial;
+  sheet(`<h3>${esc(title)}</h3><div class="sub">${esc(sub)}</div>${extra||''}
+   <div class="lbl">Motivo (opcional)</div><div class="chips blue">${ms.map(x=>`<button class="pill ${x===pick?'on':''}" data-m="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+   <textarea class="field" id="note" rows="2" placeholder="Motivo o nota (opcional)">${esc(note)}</textarea>
+   <div class="row2"><button class="big ghost" id="cancel">Cancelar</button><button class="big blue" id="ok">Guardar</button></div>`,m=>{
+    m.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{pick=pick===b.dataset.m?'':b.dataset.m;m.querySelectorAll('[data-m]').forEach(x=>x.classList.toggle('on',x.dataset.m===pick))});
+    m.querySelector('#cancel').onclick=closeSheet;
+    m.querySelector('#ok').onclick=()=>{const t=m.querySelector('#note').value.trim();const r=[pick,t].filter(Boolean).join('; ');const ok=done(r,m);if(ok!==false)closeSheet()};
+  });
+}
+function saveList(g,day,lessons){
+  let k=0;
+  for(const [sid] of g.students){const v=draft.st[sid];
+    lessons.forEach((l,i)=>{let s=v.s,r=v.r;
+      if((s==='T'||s==='TJ')&&i>0){s='P';r=''}      // tardía: solo la primera lección; las demás presentes
+      k+=addChange(g,sid,day,l,s,r,'lista')})}
+  persist();draft=null;toast(k?`Lista guardada en el celular · ${k} ${k===1?'cambio':'cambios'}`:'No hubo cambios: la lista ya estaba igual en DANI');render();
+}
+
+/* ---------- Justificar ---------- */
+function pendientesJust(scope){
+  const out=new Map();
+  for(const g of S.pkg.groups){if(scope==='g'&&g.key!==S.ui.g)continue;
+    const keys=new Set();for(const k of g.map.keys())keys.add(k);
+    for(const c of S.ch)if(c.g===g.key)keys.add(`${c.sid}|${c.day}|${c.l}`);
+    for(const [k,c] of S.rev)if(c.g===g.key)keys.add(`${c.sid}|${c.day}|${c.l}`);
+    for(const k of keys){const [sid,day,l]=k.split('|');const v=cur(g,+sid,day,+l);if(!v||!['A','T','E'].includes(v.s))continue;
+      const id=`${g.key}|${sid}|${day}`;if(!out.has(id))out.set(id,{g,sid:+sid,day,les:[]});out.get(id).les.push({l:+l,s:v.s,r:v.r,src:v.src})}}
+  return [...out.values()].sort((a,b)=>b.day.localeCompare(a.day)||a.g.names.get(a.sid).localeCompare(b.g.names.get(b.sid)));
+}
+function vJust(){
+  let h=`<div class="lessons" style="padding-top:12px"><button class="pill ${S.ui.scope==='g'?'on':''}" data-sc="g">Este grupo</button><button class="pill ${S.ui.scope==='all'?'on':''}" data-sc="all">Todos los grupos</button></div>
+  <input class="search" id="q" placeholder="Buscar estudiante" value="${esc(S.ui.q)}">`;
+  h+='<div id="jl"></div>';$('#main').innerHTML=h;
+  document.querySelectorAll('[data-sc]').forEach(b=>b.onclick=()=>{S.ui.scope=b.dataset.sc;persist();vJust()});
+  const q=$('#q');q.oninput=()=>{S.ui.q=q.value;persist();list()};
+  function list(){
+    const norm=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+    const items=pendientesJust(S.ui.scope).filter(x=>!S.ui.q||norm(x.g.names.get(x.sid)).includes(norm(S.ui.q)));
+    $('#jl').innerHTML=items.length?items.map((x,i)=>{x.les.sort((a,b)=>a.l-b.l);const kinds=[...new Set(x.les.map(v=>v.s))];
+      return `<button class="card" data-i="${i}"><div class="d"><b>${esc(x.g.names.get(x.sid))}</b><small>${esc(short(x.g.subject))} ${x.g.level}.º · ${fmt(x.day)} · ${x.les.map(v=>'L'+v.l).join(', ')}</small></div>${kinds.map(s=>`<span class="chip c${s}">${s}</span>`).join(' ')}</button>`}).join('')
+      :`<div class="empty"><b>Nada pendiente</b>${S.ui.q?'No hay ausencias sin justificar con ese nombre.':'No hay ausencias, tardías ni escapes sin justificar.'}</div>`;
+    document.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>justSheet(items[+b.dataset.i]));
+  }
+  list();
+}
+function justSheet(x){
+  const name=x.g.names.get(x.sid);let sel=new Set(x.les.map(v=>v.l));
+  const to=s=>s==='T'?'TJ':'J';
+  const extra=`<div class="lbl">Lecciones</div><div class="chips" id="les">${x.les.map(v=>`<button class="pill on" data-l="${v.l}">L${v.l} · <span>${v.s} → ${to(v.s)}</span></button>`).join('')}</div>
+   <div class="info">Ausencia y escape pasan a <b>Justificada</b>; tardía pasa a <b>Tardía justificada</b> y conserva sus minutos.</div>`;
+  reasonSheet(name,`${short(x.g.subject)} ${x.g.level}.º · ${fmt(x.day)}`,'',(r,m)=>{
+    if(!sel.size){toast('Elegí al menos una lección');return false}
+    let k=0;for(const v of x.les){if(!sel.has(v.l))continue;let rr=r;
+      if(v.s==='T'){const mm=minOf(v.r);rr=[r,mm!=null?`min: ${mm}`:''].filter(Boolean).join('; ')}
+      k+=addChange(x.g,x.sid,x.day,v.l,to(v.s),rr,'justificacion')}
+    persist();toast(`Justificación guardada en el celular`);setTimeout(()=>{render()},0);
+  },extra);
+  const m=$('#modal');m.querySelector('.sheet .big.blue').textContent='Guardar justificación';
+  m.querySelectorAll('#les [data-l]').forEach(b=>b.onclick=()=>{const l=+b.dataset.l;sel.has(l)?sel.delete(l):sel.add(l);b.classList.toggle('on',sel.has(l))});
+}
+
+/* ---------- Pendientes ---------- */
+function vPend(){
+  const byG=new Map();for(const c of S.ch){if(!byG.has(c.g))byG.set(c.g,[]);byG.get(c.g).push(c)}
+  let h='';
+  if(!S.ch.length)h+=`<div class="empty"><b>Todo enviado</b>No hay cambios esperando para pasar a DANI.</div>`;
+  else{h+=`<div class="box"><p>Estos cambios están guardados solo en el celular. Pasan a DANI cuando sincronizás.</p><button class="big" style="margin-top:12px" onclick="S.ui.tab='sync';render()">Sincronizar ahora</button></div>`;
+    for(const [gk,list] of byG){const g=S.pkg.groups.find(x=>x.key===gk);h+=`<div class="sec">${esc(g?short(g.subject)+' '+g.level+'.º':gk)}</div>`;
+      list.sort((a,b)=>b.day.localeCompare(a.day)||a.l-b.l);
+      h+=list.map(c=>`<div class="card"><div class="d"><b>${esc(g?g.names.get(c.sid):c.sid)}</b><small>${fmtShort(c.day)} · L${c.l}${c.prev?` · antes ${c.prev}`:''}${reasonText(c.r)?' · '+esc(reasonText(c.r)):''}${minOf(c.r)!=null?' · '+minOf(c.r)+' min':''}</small></div><span class="chip c${c.s}">${c.s}</span><button class="x" data-del="${c.id}" title="Quitar">✕</button></div>`).join('')}}
+  const rev=S.pkg&&S.pkg.rev||[];
+  if(rev.length)h+=`<div class="sec">En revisión en DANI</div><div class="box"><p>${rev.length} ${rev.length===1?'cambio ya llegó':'cambios ya llegaron'} a DANI y ${rev.length===1?'espera':'esperan'} que lo apruebes en la compu (menú <b>Celular</b>).</p></div>`;
+  $('#main').innerHTML=h;
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{S.ch=S.ch.filter(c=>c.id!==b.dataset.del);persist();render()});
+}
+
+/* ---------- Sincronizar ---------- */
+async function pack(obj){const s=new Blob([JSON.stringify(obj)]).stream().pipeThrough(new CompressionStream('deflate-raw'));const buf=new Uint8Array(await new Response(s).arrayBuffer());let bin='';for(let i=0;i<buf.length;i+=8192)bin+=String.fromCharCode.apply(null,buf.subarray(i,i+8192));return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+async function unpack(str){str=str.replace(/-/g,'+').replace(/_/g,'/');while(str.length%4)str+='=';const bin=atob(str);const buf=Uint8Array.from(bin,c=>c.charCodeAt(0));const s=new Blob([buf]).stream().pipeThrough(new DecompressionStream('deflate-raw'));return JSON.parse(await new Response(s).text())}
+function vSync(){
+  const last=S.sync.addr||'';const n=S.ch.length;
+  let h=`<div class="box"><h3>Sincronizar con DANI</h3><p>En la compu abrí DANI → <b>Celular</b>. Celular y compu tienen que estar en el mismo Wi-Fi. No se usa internet ni la nube.</p>
+   ${n?`<p style="margin-top:8px"><span class="badge">${n} ${n===1?'cambio':'cambios'} por enviar</span></p>`:''}
+   ${'BarcodeDetector' in window?`<button class="big" id="scan" style="margin-top:14px">Escanear código de DANI</button>`:''}</div>
+   <div class="box"><h3>Escribir la dirección</h3><p>Si no podés escanear, copiá lo que muestra DANI.</p>
+   <input class="field" id="addr" placeholder="Dirección, p. ej. 192.168.1.20:8765" value="${esc(last)}" inputmode="url" autocapitalize="off">
+   <input class="field" id="tok" placeholder="Código de 6 letras" autocapitalize="characters" maxlength="6">
+   <button class="big ghost" id="go" style="margin-top:12px">Sincronizar</button></div>
+   <div class="box"><h3>Sin Wi-Fi: por archivo</h3><p>Mandate los cambios como archivo (WhatsApp, correo o cable) y en DANI usá <b>Recibir archivo</b>.</p>
+   <div class="row2"><button class="big ghost" id="expf" ${n?'':'disabled'}>Enviar cambios</button><button class="big ghost" id="impf">Cargar datos</button></div>
+   <input type="file" id="file" accept=".json,application/json" hidden></div>
+   ${S.pkg?`<div class="info" style="margin:4px 18px 20px">Datos de ${esc(S.pkg.centro||'DANI')} · ${S.pkg.year} · ${periodName()} · ${S.pkg.groups.length} grupos · ${ago(S.pkg.gen)}</div>`:''}`;
+  $('#main').innerHTML=h;
+  if($('#scan'))$('#scan').onclick=scan;
+  $('#go').onclick=()=>{const a=$('#addr').value.trim(),t=$('#tok').value.trim().toUpperCase();if(!a||t.length<6){toast('Escribí la dirección y el código que muestra DANI');return}go(a,t)};
+  $('#expf').onclick=exportFile;$('#impf').onclick=()=>$('#file').click();$('#file').onchange=importFile;
+}
+async function scan(){
+  sheet(`<h3>Escaneá el código</h3><div class="sub">Apuntá la cámara al código QR de la ventana Celular de DANI.</div><video id="v" playsinline muted></video><div class="row2"><button class="big ghost" id="cancel">Cancelar</button></div>`,async m=>{
+    m.querySelector('#cancel').onclick=closeSheet;
+    try{const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});window._stream=st;const v=m.querySelector('#v');v.srcObject=st;await v.play();
+      const det=new BarcodeDetector({formats:['qr_code']});
+      const loop=async()=>{if(!window._stream)return;try{const r=await det.detect(v);const t=r.map(x=>x.rawValue).find(x=>x.startsWith('DANI1|'));
+        if(t){const [,a,tok]=t.split('|');closeSheet();go(a,tok);return}}catch(e){}requestAnimationFrame(loop)};loop();
+    }catch(e){closeSheet();toast('No se pudo abrir la cámara. Escribí la dirección.')}
+  });
+}
+async function go(addr,tok){
+  addr=addr.replace(/^https?:\/\//,'').replace(/\/+$/,'');S.sync.addr=addr;save('db_sync',S.sync);
+  const app=location.origin+location.pathname;
+  const d=await pack({v:1,ch:S.ch,have:S.pkg?S.pkg.gen:null});
+  save('db_sent',S.ch.map(c=>c.id));
+  location.href=`http://${addr}/s?t=${encodeURIComponent(tok)}&r=${encodeURIComponent(app)}&d=${d}`;
+}
+async function arrive(){
+  const h=location.hash;if(!h||h.length<3)return;
+  history.replaceState(null,'',location.pathname+location.search);
+  const p=new URLSearchParams(h.slice(1));
+  if(p.get('err')){toast(p.get('err'));return}
+  if(!p.get('p'))return;
+  try{const data=await unpack(p.get('p'));applyPackage(data,'sync')}catch(e){toast('No se pudieron leer los datos de DANI')}
+}
+function applyPackage(data,how){
+  if(!data||!data.pkg||!Array.isArray(data.pkg.groups)){toast('Ese archivo no es un paquete de DANI');return}
+  const ack=new Set(data.ack||[]);const before=S.ch.length;
+  S.ch=S.ch.filter(c=>!ack.has(c.id));const sent=before-S.ch.length;
+  S.pkg=data.pkg;save('db_pkg',S.pkg);persist();index();draft=null;
+  if(!S.pkg.groups.find(g=>g.key===S.ui.g))S.ui.g=S.pkg.groups[0]&&S.pkg.groups[0].key;
+  S.ui.tab=sent||how==='sync'?'lista':S.ui.tab;persist();render();
+  toast(sent?`Listo: ${sent} ${sent===1?'cambio llegó':'cambios llegaron'} a DANI`:'Datos de DANI actualizados');
+}
+async function exportFile(){
+  const now=new Date();const name=`dani_bolsillo_cambios_${iso(now).replace(/-/g,'')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}.json`;
+  const blob=new Blob([JSON.stringify({tipo:'dani-bolsillo-cambios',v:1,ch:S.ch},null,1)],{type:'application/json'});
+  const file=new File([blob],name,{type:'application/json'});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:'Cambios para DANI'});toast('Cuando DANI los reciba, se borran solos al sincronizar');return}catch(e){if(e.name==='AbortError')return}}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  toast('Archivo descargado');
+}
+async function importFile(e){
+  const f=e.target.files[0];if(!f)return;
+  try{const data=JSON.parse(await f.text());if(data.tipo!=='dani-bolsillo-paquete')throw 0;applyPackage(data,'file')}catch(err){toast('Ese archivo no es un paquete de DANI')}
+  e.target.value='';
+}
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+render();arrive();
+</script>
+</body>
+</html>
