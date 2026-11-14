@@ -80,7 +80,7 @@ nav .count{position:absolute;top:0;left:calc(50% + 6px);background:#D9A021;color
 .blue .pill{border-color:#B9D3EC;color:#2F6FB5}.blue .pill.on{background:#2F6FB5;border-color:#2F6FB5;color:#fff}
 .row2{display:flex;gap:8px;margin-top:16px}.row2 .big{flex:1}
 .warn{background:#FFF7E3;border:1px solid #F2D58A;border-radius:12px;padding:9px 12px;font-size:13px;color:#7A5A0E;margin-top:10px}
-#toast{position:fixed;left:50%;top:calc(96px + env(safe-area-inset-top));transform:translateX(-50%);background:#25313A;color:#fff;padding:10px 18px;border-radius:20px;font-size:14px;z-index:30;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%;text-align:center}
+#toast{position:fixed;left:50%;top:calc(150px + env(safe-area-inset-top));transform:translateX(-50%);background:#25313A;color:#fff;padding:10px 18px;border-radius:20px;font-size:14px;z-index:30;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%;text-align:center}
 #toast.on{opacity:1}
 video{width:100%;border-radius:16px;background:#000;margin-top:10px;aspect-ratio:1;object-fit:cover}
 .info{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.45}
@@ -112,7 +112,7 @@ const fmtShort=s=>{const d=parse(s);return `${d.getDate()} ${MESES[d.getMonth()]
 const uid=()=>'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const short=s=>({'Estudios Sociales':'Sociales','Educación Cívica':'Cívica'}[s]||s);
 let S={pkg:load('db_pkg',null),ch:load('db_changes',[]),ui:load('db_ui',{}),sync:load('db_sync',{})};
-S.ui=Object.assign({tab:'lista',g:null,day:today(),les:'all',scope:'g',q:''},S.ui);
+S.ui=Object.assign({tab:'lista',g:null,day:today(),les:'all',scope:'g',q:'',per:new Date().getMonth()>=6?2:1},S.ui);
 S.nube=load('db_nube',null);S.sent=load('db_sent2',[]);S.net={busy:false,err:'',sentAt:load('db_sentat',null)};
 let draft=null;   // lista en edición (no guardada todavía)
 const persist=()=>{save('db_changes',S.ch);save('db_ui',S.ui);save('db_sent2',S.sent)};
@@ -121,34 +121,50 @@ const persist=()=>{save('db_changes',S.ch);save('db_ui',S.ui);save('db_sent2',S.
 function index(){
   if(!S.pkg)return;
   for(const g of S.pkg.groups){
-    g.map=new Map();g.daySet=new Set(g.days||[]);g.names=new Map(g.students.map(s=>[s[0],s[1]]));
-    for(const [sid,day,l,s,r] of g.rec)g.map.set(`${sid}|${day}|${l}`,[s,r||'']);
+    g.names=new Map(g.students.map(s=>[s[0],s[1]]));
+    const per=g.per||{[S.pkg.period]:{rec:g.rec||[],days:g.days||[],over:g.over||{},nc:g.nc||{}}};   // paquetes viejos
+    g.P={};
+    for(const k of ['1','2']){const d=per[k]||{rec:[],days:[],over:{},nc:{}};const map=new Map();
+      for(const [sid,day,l,st,r] of d.rec)map.set(`${sid}|${day}|${l}`,[st,r||'']);
+      g.P[k]={map,daySet:new Set(d.days),over:d.over||{},nc:d.nc||{}}}
   }
-  S.rev=new Map();for(const c of S.pkg.rev||[])S.rev.set(`${c.g}|${c.sid}|${c.day}|${c.l}`,c);
+  S.rev=new Map();for(const c of S.pkg.rev||[])S.rev.set(`${c.per||S.pkg.period}|${c.g}|${c.kind==='nc'||c.kind==='dia'?c.kind:c.sid}|${c.day}|${c.kind==='dia'?0:c.l}`,c);
 }
 index();
+const P=g=>g.P[String(S.ui.per)];
 const G=()=>S.pkg&&(S.pkg.groups.find(g=>g.key===S.ui.g)||S.pkg.groups[0]);
-function mine(g,sid,day,l){for(const L of [S.ch,S.sent])for(let i=L.length-1;i>=0;i--){const c=L[i];if(c.g===g.key&&c.sid===sid&&c.day===day&&c.l===l)return c}return null}
+const same=(c,g,sid,day,l)=>c.g===g.key&&c.sid===sid&&c.day===day&&c.l===l&&(c.per||S.ui.per)===S.ui.per&&c.kind!=='nc'&&c.kind!=='dia';
+function mine(g,sid,day,l){for(const L of [S.ch,S.sent])for(let i=L.length-1;i>=0;i--){const c=L[i];if(same(c,g,sid,day,l))return c}return null}
+const revOf=(g,sid,day,l)=>S.rev.get(`${S.ui.per}|${g.key}|${sid}|${day}|${l}`);
 /* estado actual: cambio propio > en revisión en DANI > registro de DANI > P si el día ya tiene lista */
 function cur(g,sid,day,l){
   const c=mine(g,sid,day,l);if(c)return {s:c.s,r:c.r,src:'yo'};
-  const v=S.rev.get(`${g.key}|${sid}|${day}|${l}`);if(v)return {s:v.s,r:v.r,src:'rev'};
-  const x=g.map.get(`${sid}|${day}|${l}`);if(x)return {s:x[0],r:x[1],src:'dani'};
-  if(g.daySet.has(day))return {s:'P',r:'',src:'dani'};
+  const v=revOf(g,sid,day,l);if(v)return {s:v.s,r:v.r,src:'rev'};
+  const x=P(g).map.get(`${sid}|${day}|${l}`);if(x)return {s:x[0],r:x[1],src:'dani'};
+  if(P(g).daySet.has(day))return {s:'P',r:'',src:'dani'};
   return null;
 }
 const pyWeekday=day=>(parse(day).getDay()+6)%7;
-function nLessons(g,day){if(g.over&&g.over[day]!=null)return g.over[day];return (g.sched||{})[pyWeekday(day)]||0}
-const ncOf=(g,day)=>(g.nc&&g.nc[day])||[];
+const propias=(g,day,kind)=>S.ch.concat(S.sent).filter(c=>c.kind===kind&&c.g===g.key&&c.day===day&&(c.per||S.ui.per)===S.ui.per);
+function nLessons(g,day){
+  const d=propias(g,day,'dia');if(d.length)return d[d.length-1].l;
+  const v=S.rev.get(`${S.ui.per}|${g.key}|dia|${day}|0`);if(v)return v.l;
+  if(P(g).over[day]!=null)return P(g).over[day];return (g.sched||{})[pyWeekday(day)]||0}
+function ncOf(g,day){const out=new Set(P(g).nc[day]||[]);for(const c of propias(g,day,'nc'))out.add(c.l);
+  for(const [k,c] of S.rev)if(c.kind==='nc'&&k.startsWith(`${S.ui.per}|${g.key}|nc|${day}|`))out.add(c.l);return [...out]}
 const minOf=r=>{const m=/(?:^|\s)min\s*:\s*(\d+)/i.exec(r||'');return m?+m[1]:null};
 const reasonText=r=>(r||'').replace(/(?:^|\s|;)\s*min\s*:\s*\d+/ig,'').replace(/^[\s;,]+|[\s;,]+$/g,'');
 function stamp(){return new Date().toISOString().slice(0,19)}
 function addChange(g,sid,day,l,s,r,kind){
-  const prev=(()=>{const v=S.rev.get(`${g.key}|${sid}|${day}|${l}`);if(v)return v.s;const x=g.map.get(`${sid}|${day}|${l}`);if(x)return x[0];return g.daySet.has(day)?'P':''})();
-  S.ch=S.ch.filter(c=>!(c.g===g.key&&c.sid===sid&&c.day===day&&c.l===l));
+  const prev=(()=>{const v=revOf(g,sid,day,l);if(v)return v.s;const x=P(g).map.get(`${sid}|${day}|${l}`);if(x)return x[0];return P(g).daySet.has(day)?'P':''})();
+  S.ch=S.ch.filter(c=>!same(c,g,sid,day,l));
   const c0=cur(g,sid,day,l);
   if(c0&&c0.s===s&&(c0.r||'')===(r||''))return 0;   // igual a lo que ya tiene DANI o ya se envió
-  S.ch.push({id:uid(),g:g.key,sid,day,l,s,r:r||'',prev,kind,per:S.pkg.period,ts:stamp()});return 1;
+  S.ch.push({id:uid(),g:g.key,sid,day,l,s,r:r||'',prev,kind,per:S.ui.per,ts:stamp()});return 1;
+}
+function addClase(g,day,kind,l,r){   // kind 'nc' (sin clase en esa lección) o 'dia' (clase en día fuera del horario; l = lecciones)
+  S.ch=S.ch.filter(c=>!(c.kind===kind&&c.g===g.key&&c.day===day&&(kind==='dia'||c.l===l)&&(c.per||S.ui.per)===S.ui.per));
+  S.ch.push({id:uid(),g:g.key,sid:0,day,l,s:kind==='nc'?'NC':'DIA',r:r||'',prev:'',kind,per:S.ui.per,ts:stamp()});
 }
 
 /* ---------- interfaz ---------- */
@@ -166,16 +182,18 @@ function render(){
   const age=S.pkg?ago(S.pkg.gen):'';
   let h=`<header><div class="brand"><b>DANI Bolsillo</b><span>${netLine()||(S.pkg?esc(periodName())+' · '+age:'sin datos todavía')}</span></div>`;
   if(S.pkg&&S.ui.tab!=='sync')h+=`<div class="groups">${S.pkg.groups.map(x=>`<button class="pill ${x.key===S.ui.g?'on':''}" data-g="${esc(x.key)}">${esc(short(x.subject))} ${x.level}.º</button>`).join('')}</div>`;
+  if(S.pkg&&S.ui.tab!=='sync')h+=`<div class="groups" style="margin-top:6px">${[1,2].map(n=>`<button class="pill ${S.ui.per===n?'on':''}" data-per="${n}" style="padding:4px 12px;font-size:12.5px">${n===1?'I':'II'} período</button>`).join('')}</div>`;
   h+=`</header><main id="main"></main>`;
   const n=S.ch.length;
   h+=`<nav><div>${[['lista','Lista'],['justificar','Justificar'],['pendientes','Pendientes'],['sync','Sincronizar']].map(([k,t])=>`<button data-tab="${k}" class="${S.ui.tab===k?'on':''}">${ICON[k]}${t}${k==='pendientes'&&n?`<span class="count">${n}</span>`:''}</button>`).join('')}</div></nav>`;
   $('#app').innerHTML=h;
   document.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{S.ui.g=b.dataset.g;draft=null;persist();render()});
+  document.querySelectorAll('[data-per]').forEach(b=>b.onclick=()=>{S.ui.per=+b.dataset.per;draft=null;persist();render()});
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{S.ui.tab=b.dataset.tab;persist();render();scrollTo(0,0)});
   if(!S.pkg&&S.ui.tab!=='sync'){ $('#main').innerHTML=`<div class="empty"><b>Bienvenido a DANI Bolsillo</b>Para empezar, en la compu abrí DANI → <b style="display:inline;font-size:inherit">Celular</b> → <b style="display:inline;font-size:inherit">Emparejar celular</b> y escaneá ese código con la cámara. Se hace una sola vez.<br><br><button class="big" onclick="S.ui.tab='sync';render()">Ir a Sincronizar</button></div>`;return}
   ({lista:vLista,justificar:vJust,pendientes:vPend,sync:vSync})[S.ui.tab]();
 }
-const periodName=()=>S.pkg.period===1?'I período':'II período';
+const periodName=()=>S.ui.per===1?'I período':'II período';
 function ago(ts){if(!ts)return '';const m=Math.round((Date.now()-new Date(ts).getTime())/60000);if(m<2)return 'recién actualizado';if(m<60)return `actualizado hace ${m} min`;const h=Math.round(m/60);if(h<36)return `actualizado hace ${h} h`;return `actualizado hace ${Math.round(h/24)} días`}
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),2600)}
 function sheet(html,mount){const m=$('#modal');m.innerHTML=`<div class="dim"></div><div class="sheet"><div class="grab"></div>${html}</div>`;m.classList.add('on');m.querySelector('.dim').onclick=closeSheet;mount&&mount(m)}
@@ -186,22 +204,22 @@ function classDay(g,day,dir){let d=parse(day);for(let i=0;i<120;i++){d.setDate(d
 function vLista(){
   const g=G(),day=S.ui.day,n=nLessons(g,day),nc=ncOf(g,day);
   let h=`<div class="bar"><button class="daybtn" id="prev">‹</button><div class="daytxt"><b>${fmt(day)}</b><small>${n?`${n} ${n===1?'lección':'lecciones'}${nc.length?` · ${nc.length} sin clase`:''}`:'sin clase según el horario'}${day===today()?' · hoy':''}</small><input type="date" id="pick" value="${day}"></div><button class="daybtn" id="next">›</button></div>`;
-  if(!n){$('#main').innerHTML=h+`<div class="empty">Según el horario de DANI, ${esc(short(g.subject))} ${g.level}.º no tiene clase este día.<br>Usá las flechas para ir a un día con clase.</div>`;bindDay(g);return}
+  if(!n){$('#main').innerHTML=h+`<div class="empty">Según el horario, ${esc(short(g.subject))} ${g.level}.º no tiene clase este día.<br><br><button class="big" id="extra">Dar clase este día</button><br><span style="font-size:13px">Por ejemplo, si otro docente cambió de día con vos.</span></div>`;bindDay(g);$('#extra').onclick=()=>diaExtra(g,day);return}
   const avail=[...Array(n)].map((_,i)=>i+1).filter(l=>!nc.includes(l));
   if(S.ui.les!=='all'&&!avail.includes(+S.ui.les))S.ui.les='all';
-  h+=`<div class="lessons">${avail.map(l=>`<button class="pill ${+S.ui.les===l||avail.length===1?'on':''}" data-l="${l}">Lección ${l}</button>`).join('')}${avail.length>1?`<button class="pill ${S.ui.les==='all'?'on':''}" data-l="all">Todas</button>`:''}</div>`;
-  if(!avail.length){$('#main').innerHTML=h+`<div class="empty">Todas las lecciones de este día están marcadas como sin clase en DANI.</div>`;bindDay(g);return}
+  h+=`<div class="lessons">${avail.map(l=>`<button class="pill ${+S.ui.les===l||avail.length===1?'on':''}" data-l="${l}">Lección ${l}</button>`).join('')}${avail.length>1?`<button class="pill ${S.ui.les==='all'?'on':''}" data-l="all">Todas</button>`:''}<button class="pill" id="sinclase" style="border-style:dashed;color:var(--muted)">Sin clase…</button></div>${nc.length?`<div class="info" style="margin:-4px 16px 8px">Sin clase: ${nc.sort().map(l=>'L'+l).join(', ')}</div>`:''}`;
+  if(!avail.length){$('#main').innerHTML=h+`<div class="empty">Todas las lecciones de este día están marcadas como sin clase.</div>`;bindDay(g);return}
   const lessons=S.ui.les==='all'?avail:[+S.ui.les];
   const key=`${g.key}|${day}|${S.ui.les}`;
   if(!draft||draft.key!==key){draft={key,st:{},dirty:false};
     for(const [sid] of g.students){const c=cur(g,sid,day,lessons[0]);draft.st[sid]=c?{s:c.s,r:c.r}:{s:'P',r:''}}}
-  const registered=lessons.some(l=>g.students.some(([sid])=>{const c=cur(g,sid,day,l);return c&&c.src!=='dani'||g.daySet.has(day)}));
+  const registered=lessons.some(l=>g.students.some(([sid])=>{const c=cur(g,sid,day,l);return c&&c.src!=="dani"||P(g).daySet.has(day)}));
   h+=g.students.map(([sid,name])=>{const v=draft.st[sid];const m=minOf(v.r),t=reasonText(v.r);
     const cap=v.s==='T'||v.s==='TJ'?`Tardía · ${m??'?'} min${t?' · '+esc(t):''}`:(v.s==='J'&&t?esc(t):'');
     return `<div class="st"><div class="n">${esc(name)}${cap?`<small>${cap}</small>`:''}</div><div class="seg">${['P','A','T','J','E'].map(s=>`<button data-sid="${sid}" data-s="${s}" class="${v.s===s||(s==='T'&&v.s==='TJ')?'s'+v.s:''}">${s}</button>`).join('')}</div></div>`}).join('');
   const pend=S.ch.length;
   h+=`<div class="foot"><div><div class="note">${registered&&!draft.dirty?'Esta lista ya tiene datos · ':''}${S.nube?'Se envía sola a DANI':'Se guarda en el celular'}${pend?` · <span class="badge">${pend} ${pend===1?'cambio pendiente':'cambios pendientes'}</span>`:''}</div><button class="big" id="saveList">Guardar lista</button></div></div>`;
-  $('#main').innerHTML=h;bindDay(g);
+  $('#main').innerHTML=h;bindDay(g);$('#sinclase').onclick=()=>sinClase(g,day,avail);
   document.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{S.ui.les=b.dataset.l==='all'?'all':+b.dataset.l;persist();vLista()});
   document.querySelectorAll('[data-sid]').forEach(b=>b.onclick=()=>setStatus(g,+b.dataset.sid,b.dataset.s,lessons));
   $('#saveList').onclick=()=>saveList(g,day,lessons);
@@ -249,13 +267,37 @@ function saveList(g,day,lessons){
   persist();draft=null;toast(k?(S.nube?`Lista guardada · ${k} ${k===1?'cambio':'cambios'} · enviando a DANI…`:`Lista guardada en el celular · ${k} ${k===1?'cambio':'cambios'}`):'No hubo cambios: la lista ya estaba igual en DANI');render();if(k)enviar();
 }
 
+function sinClase(g,day,avail){
+  const ms=['Simulacro','Acto cívico','Examen','Actividad institucional','Otro'];let sel=new Set(avail),pick='';
+  sheet(`<h3>Sin clase</h3><div class="sub">${esc(short(g.subject))} ${g.level}.º · ${fmt(day)}</div>
+   <div class="lbl">Lecciones sin clase</div><div class="chips" id="sl">${avail.map(l=>`<button class="pill on" data-l="${l}">Lección ${l}</button>`).join('')}</div>
+   <div class="lbl">Motivo</div><div class="chips blue">${ms.map(x=>`<button class="pill" data-m="${x}">${x}</button>`).join('')}</div>
+   <textarea class="field" id="note" rows="2" placeholder="Detalle (opcional)"></textarea>
+   <div class="row2"><button class="big ghost" id="cancel">Cancelar</button><button class="big" id="ok">Marcar sin clase</button></div>`,m=>{
+    m.querySelectorAll('#sl [data-l]').forEach(b=>b.onclick=()=>{const l=+b.dataset.l;sel.has(l)?sel.delete(l):sel.add(l);b.classList.toggle('on',sel.has(l))});
+    m.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{pick=pick===b.dataset.m?'':b.dataset.m;m.querySelectorAll('[data-m]').forEach(x=>x.classList.toggle('on',x.dataset.m===pick))});
+    m.querySelector('#cancel').onclick=closeSheet;
+    m.querySelector('#ok').onclick=()=>{if(!sel.size){toast('Elegí al menos una lección');return}
+      const r=[pick,m.querySelector('#note').value.trim()].filter(Boolean).join('; ')||'Sin clase';
+      for(const l of sel)addClase(g,day,'nc',l,r);persist();closeSheet();draft=null;render();toast('Marcado sin clase');enviar()}});
+}
+function diaExtra(g,day){let n=(g.sched&&Object.values(g.sched)[0])||2;
+  sheet(`<h3>Dar clase este día</h3><div class="sub">${esc(short(g.subject))} ${g.level}.º · ${fmt(day)}</div>
+   <div class="lbl">¿Cuántas lecciones?</div><div class="chips" id="nl">${[1,2,3,4].map(k=>`<button class="pill ${k===n?'on':''}" data-n="${k}">${k}</button>`).join('')}</div>
+   <div class="info">Después pasás lista normal. En DANI queda como cambio de horario de ese día.</div>
+   <div class="row2"><button class="big ghost" id="cancel">Cancelar</button><button class="big" id="ok">Listo</button></div>`,m=>{
+    m.querySelectorAll('[data-n]').forEach(b=>b.onclick=()=>{n=+b.dataset.n;m.querySelectorAll('[data-n]').forEach(x=>x.classList.toggle('on',+x.dataset.n===n))});
+    m.querySelector('#cancel').onclick=closeSheet;
+    m.querySelector('#ok').onclick=()=>{addClase(g,day,'dia',n,'Cambio de día');persist();closeSheet();draft=null;render()}});
+}
+
 /* ---------- Justificar ---------- */
 function pendientesJust(scope){
   const out=new Map();
   for(const g of S.pkg.groups){if(scope==='g'&&g.key!==S.ui.g)continue;
-    const keys=new Set();for(const k of g.map.keys())keys.add(k);
-    for(const c of S.ch.concat(S.sent))if(c.g===g.key)keys.add(`${c.sid}|${c.day}|${c.l}`);
-    for(const [k,c] of S.rev)if(c.g===g.key)keys.add(`${c.sid}|${c.day}|${c.l}`);
+    const keys=new Set();for(const k of P(g).map.keys())keys.add(k);
+    for(const c of S.ch.concat(S.sent))if(c.g===g.key&&c.sid&&(c.per||S.ui.per)===S.ui.per)keys.add(`${c.sid}|${c.day}|${c.l}`);
+    for(const [k,c] of S.rev)if(c.g===g.key&&c.sid&&(c.per||S.pkg.period)===S.ui.per)keys.add(`${c.sid}|${c.day}|${c.l}`);
     for(const k of keys){const [sid,day,l]=k.split('|');const v=cur(g,+sid,day,+l);if(!v||!['A','T','E'].includes(v.s))continue;
       const id=`${g.key}|${sid}|${day}`;if(!out.has(id))out.set(id,{g,sid:+sid,day,les:[]});out.get(id).les.push({l:+l,s:v.s,r:v.r,src:v.src})}}
   return [...out.values()].sort((a,b)=>b.day.localeCompare(a.day)||a.g.names.get(a.sid).localeCompare(b.g.names.get(b.sid)));
@@ -297,7 +339,7 @@ function cardsOf(list){
   const byG=new Map();for(const c of list){if(!byG.has(c.g))byG.set(c.g,[]);byG.get(c.g).push(c)}let h='';
   for(const [gk,l] of byG){const g=S.pkg&&S.pkg.groups.find(x=>x.key===gk);h+=`<div class="sec">${esc(g?short(g.subject)+' '+g.level+'.º':gk)}</div>`;
     l.sort((a,b)=>b.day.localeCompare(a.day)||a.l-b.l);
-    h+=l.map(c=>`<div class="card"><div class="d"><b>${esc(g?g.names.get(c.sid):c.sid)}</b><small>${fmtShort(c.day)} · L${c.l}${c.prev?` · antes ${c.prev}`:''}${reasonText(c.r)?' · '+esc(reasonText(c.r)):''}${minOf(c.r)!=null?' · '+minOf(c.r)+' min':''}</small></div><span class="chip c${c.s}">${c.s}</span>${list===S.ch?`<button class="x" data-del="${c.id}" title="Quitar">✕</button>`:''}</div>`).join('')}
+    h+=l.map(c=>c.kind==='nc'||c.kind==='dia'?`<div class="card"><div class="d"><b>${c.kind==='nc'?'Sin clase · '+esc(c.r):'Clase en día extra · '+c.l+' lecc.'}</b><small>${fmtShort(c.day)}${c.kind==='nc'?' · L'+c.l:''}</small></div>${list===S.ch?`<button class="x" data-del="${c.id}" title="Quitar">✕</button>`:''}</div>`:`<div class="card"><div class="d"><b>${esc(g?g.names.get(c.sid):c.sid)}</b><small>${fmtShort(c.day)} · L${c.l}${c.prev?` · antes ${c.prev}`:''}${reasonText(c.r)?' · '+esc(reasonText(c.r)):''}${minOf(c.r)!=null?' · '+minOf(c.r)+' min':''}</small></div><span class="chip c${c.s}">${c.s}</span>${list===S.ch?`<button class="x" data-del="${c.id}" title="Quitar">✕</button>`:''}</div>`).join('')}
   return h;
 }
 function vPend(){
